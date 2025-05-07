@@ -1,2 +1,2 @@
-Название проекта: ASC - App for safe communication
+Название проекта: ASC - App for safe communication \n
 Цель проекта: разработка прилоежния для безопасного обмена сообщениями.
