@@ -1,4 +1,5 @@
 def send_RSA(email_address, password, text, reciever_email):
+    #на вход даются строки str
     import smtplib
     smtp_server = "smtp.gmail.com"
     smtp_port = 587  
