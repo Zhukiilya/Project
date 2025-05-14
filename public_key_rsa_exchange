@@ -3,21 +3,23 @@ from cryptography.hazmat.primitives import serialization, hashes
 from getpass import getpass
 from cryptography.hazmat.backends import default_backend
 import ctypes
+import gc
 
-
+def securedelb(data):
+    buffer = (ctypes.c_char * len(data)).from_buffer_copy(data)
+    ctypes.memset(ctypes.addressof(buffer), 0, len(data))
 #getpass скрывает ввод пароля в консоли
-password = getpass("Введите пароль для ключа: ").encode("utf-8")
-private_rsa_key_a = rsa.generate_private_key(
-    public_exponent=65537,
-    key_size=4096,  # Длина модуля n = 4096 бит
-    backend=default_backend()
-)
-private_key_pem = private_key.private_bytes(
-    encoding=serialization.Encoding.PEM,
-    format=serialization.PrivateFormat.PKCS8,
-    encryption_algorithm=serialization.BestAvailableEncryption(password)
-)
+OS
+def create_private_rsa_key(OSusername, OS): 
+    password = getpass("Введите пароль для ключа: ").encode("utf-8")
+    private_rsa_key_a = rsa.generate_private_key(public_exponent=65537, key_size=4096, backend=default_backend())
+    private_key_a_pem = private_rsa_key_a.private_bytes(
+                      encoding=serialization.Encoding.PEM,
+                      format=serialization.PrivateFormat.PKCS8,
+                      encryption_algorithm=serialization.BestAvailableEncryption(password))
+    del password
+    
+    with open("private_key.pem", "wb") as f:
+       f.write(private_key_pem)
 
-with open("private_key.pem", "wb") as f:
-    f.write(private_key_pem)
 S_a = private_rsa_key_a.sign(n_ae_bytes, padding=padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=32), algorithm=hashes.SHA256())
