@@ -8,10 +8,14 @@ import gc
 def securedelb(data):
     buffer = (ctypes.c_char * len(data)).from_buffer_copy(data)
     ctypes.memset(ctypes.addressof(buffer), 0, len(data))
+#определяем ОС
+import platform
+OS = platform.system()
 #getpass скрывает ввод пароля в консоли
-OS
-def create_private_rsa_key(OSusername, OS): 
-    password = getpass("Введите пароль для ключа: ").encode("utf-8")
+def create_private_rsa_key(OS):
+    
+    password = getpass("Введите пароль для файла, минимум 2: ").encode("utf-8")
+    #особенность реализации для стойкости от атак по времени
     private_rsa_key_a = rsa.generate_private_key(public_exponent=65537, key_size=4096, backend=default_backend())
     private_key_a_pem = private_rsa_key_a.private_bytes(
                       encoding=serialization.Encoding.PEM,
