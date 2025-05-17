@@ -10,7 +10,96 @@ def securedelb(data):
     ctypes.memset(ctypes.addressof(buffer), 0, len(data))
 #определяем ОС
 import platform
-OS = platform.system()
+import os
+import platform
+import subprocess
+import hashlib
+import fcntl
+import msvcrt
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# Укажите абсолютный путь к файлу здесь
+FILE_PATH = r"C:\path\to\your\file.txt"  # Для Windows
+# FILE_PATH = "/home/user/file.txt"     # Для Linux/macOS
+
+class FileGuardian(FileSystemEventHandler):
+    def __init__(self, file_path, original_hash):
+        self.file_path = file_path
+        self.original_hash = original_hash
+
+    def on_modified(self, event):
+        if event.src_path == self.file_path:
+            self.verify_and_restore()
+
+    def verify_and_restore(self):
+        try:
+            current_hash = hashlib.sha256(open(self.file_path, "rb").read()).hexdigest()
+            if current_hash != self.original_hash:
+                print("Обнаружено изменение файла! Восстановление...")
+                with open(self.file_path, "wb") as f:
+                    f.write(backup_data)
+        except Exception as e:
+            print(f"Ошибка восстановления: {e}")
+
+def protect_file(file_path):
+    system = platform.system()
+    # Блокировка файла
+    try:
+        with open(file_path, "r") as f:
+            if system in ("Linux", "Darwin"):
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            else:
+                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+    except (IOError, OSError) as e:
+        print(f"Файл заблокирован: {str(e)}")
+        return
+
+    # Установка прав и защита
+    try:
+        if system in ("Linux", "Darwin"):
+            # Скрытие файла
+            hidden_path = os.path.join(os.path.dirname(file_path), "." + os.path.basename(file_path))
+            os.rename(file_path, hidden_path)
+            protected_path = hidden_path
+
+            # Права доступа
+            os.chmod(protected_path, 0o400)
+            os.chmod(os.path.dirname(protected_path), 0o555)
+
+        elif system == "Windows":
+            # Скрытие файла
+            subprocess.run(f'attrib +H +S "{file_path}"', shell=True, check=True)
+            protected_path = file_path
+
+            # Установка прав
+            owner = os.environ["USERNAME"]
+            subprocess.run(
+                f'icacls "{protected_path}" /inheritance:r /grant:r "{owner}:(R)" /deny "Everyone:(D,WDAC,WO,DC,DE)"',
+                shell=True, check=True
+            )
+
+        else:
+            raise OSError("Неподдерживаемая ОС")
+
+        # Мониторинг изменений
+        event_handler = FileGuardian(protected_path, hashlib.sha256(backup_data).hexdigest())
+        observer = Observer()
+        observer.schedule(event_handler, path=os.path.dirname(protected_path), recursive=False)
+        observer.start()
+
+        print(f"Файл {protected_path} защищён!\nДля остановки нажмите Ctrl+C")
+
+        # Бесконечный цикл для IDLE
+        while True:
+            pass
+            
+    except Exception as e:
+        print(f"Ошибка: {str(e)}")
+        if system == "Windows":
+            subprocess.run(f'attrib -H -S "{file_path}"', shell=True)
+
+
 #getpass скрывает ввод пароля в консоли
 def create_private_rsa_key(OS):
     
@@ -26,4 +115,59 @@ def create_private_rsa_key(OS):
     with open("private_key.pem", "wb") as f:
        f.write(private_key_pem)
 
+#вадно оченрттрсрт
+import os
+import platform
+import subprocess
+import fcntl  # Для Linux/Mac
+import msvcrt  # Для Windows
+
+def protect_file(file_path):
+    absolute_path = os.path.abspath(file_path)
+    
+    if not os.path.exists(absolute_path):
+        print(f"Ошибка: Файл {absolute_path} не найден!")
+        return
+
+    system = platform.system()
+    file_handle = None
+
+    try:
+        # 1. Блокировка файла на время работы скрипта
+        file_handle = open(absolute_path, "r+")  # Режим чтения+записи для блокировки
+        
+        if system in ("Linux", "Darwin"):
+            fcntl.flock(file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)  # Эксклюзивная блокировка
+        elif system == "Windows":
+            msvcrt.locking(file_handle.fileno(), msvcrt.LK_NBLCK, 1)  # Блокировка файла
+
+        # 2. Основные защитные меры
+        if system in ("Linux", "Darwin"):
+            # Скрываем файл и устанавливаем права
+            hidden_path = os.path.join(os.path.dirname(absolute_path), "." + os.path.basename(absolute_path))
+            os.rename(absolute_path, hidden_path)
+            os.chmod(hidden_path, 0o400)  # -r--------
+            os.chmod(os.path.dirname(hidden_path), 0o555)  # Запрет записи в директорию
+
+        elif system == "Windows":
+            subprocess.run(
+                f'icacls "{absolute_path}" /inheritance:r /grant:r "%USERNAME%:(R)" /deny "Everyone:(D,WDAC,WO,DE)"',
+                shell=True, check=True
+            )
+            subprocess.run(f'attrib +H +S +R "{absolute_path}"', shell=True, check=True)
+
+        print(f"Файл {absolute_path} защищён! Для разблокировки закройте программу.")
+        input("Нажмите Enter для завершения...")  # Держим файл открытым
+
+    except (IOError, OSError) as e:
+        print(f"Ошибка блокировки: {e}")
+    except Exception as e:
+        print(f"Ошибка: {e}")
+    finally:
+        if file_handle:
+            file_handle.close()  # Снимаем блокировку
+
+# Пример использования
+protect_file(r"C:\Users\User\Documents\secret.txt")  # Windows
+# protect_file("/home/user/Documents/secret.txt")    # Linux/Mac Правильно ли я понимаю, что во время выполнения скрипта на ОС некоторые программы могут изменять все таки содержимое файла. Могу ли я это как то обойти без прав админа. Может быть сначала надо устанавливать права в файле, а потом его блокировать?
 S_a = private_rsa_key_a.sign(n_ae_bytes, padding=padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=32), algorithm=hashes.SHA256())
