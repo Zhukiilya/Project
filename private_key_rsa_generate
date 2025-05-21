@@ -102,7 +102,12 @@ def protect_file(file_path):
 
 #getpass скрывает ввод пароля в консоли
 def create_private_rsa_key(OS):
-    
+    from cryptography.hazmat.primitives.asymmetric import rsa, padding #0
+    from cryptography.hazmat.primitives import serialization, hashes
+    from getpass import getpass
+    from cryptography.hazmat.backends import default_backend
+    import ctypes
+    import gc
     password = getpass("Введите пароль для файла, минимум 2: ").encode("utf-8")
     #особенность реализации для стойкости от атак по времени
     private_rsa_key_a = rsa.generate_private_key(public_exponent=65537, key_size=4096, backend=default_backend())
@@ -111,7 +116,7 @@ def create_private_rsa_key(OS):
                       format=serialization.PrivateFormat.PKCS8,
                       encryption_algorithm=serialization.BestAvailableEncryption(password))
     del password
-    
+    gc.collect()
     with open("private_key.pem", "wb") as f:
        f.write(private_key_pem)
 
